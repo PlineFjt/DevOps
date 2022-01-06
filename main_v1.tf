@@ -33,19 +33,16 @@ resource "aws_security_group" "monSGPline"{
     protocol         = "-1"
     cidr_blocks      = ["0.0.0.0/0"]
     ipv6_cidr_blocks = ["::/0"]
+ }
 }
-
-  tags = {
-    Name = "allow_ssh_http"
-}
-}
-
 resource "aws_instance" "ec2_terrapline" {
   ami = "ami-002068ed284fb165b"
   instance_type = "t2.micro"
   key_name = "id_rsa"
+  provisioner "local-exec" {
+command = "echo ${aws_instance.ec2_terrapline.public_ip} > /root/ip_adress.txt"
+}
   vpc_security_group_ids = [aws_security_group.monSGPline.id]
-
   user_data = <<-EOF
   #!/bin/bash
   echo "*** Installing apache2"
@@ -53,15 +50,11 @@ resource "aws_instance" "ec2_terrapline" {
   sudo yum install httpd -y
   echo "*** Completed Installing apache2"
   EOF
-
   tags = {
     Name = "pline_terraF6"
  }
+}
 
-  volume_tags = {
-    Name = "web_server"
-}
-}
 
 output "public_ip" {
   value = aws_instance.ec2_terrapline.public_ip
