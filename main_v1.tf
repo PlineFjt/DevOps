@@ -35,27 +35,55 @@ resource "aws_security_group" "monSGPline"{
     ipv6_cidr_blocks = ["::/0"]
  }
 }
+
 resource "aws_instance" "ec2_terrapline" {
   ami = "ami-002068ed284fb165b"
   instance_type = "t2.micro"
   key_name = "id_rsa"
   provisioner "local-exec" {
-command = "echo ${aws_instance.ec2_terrapline.public_ip} > /root/ip_adress.txt"
-}
-  vpc_security_group_ids = [aws_security_group.monSGPline.id]
-  user_data = <<-EOF
-  #!/bin/bash
-  echo "*** Installing apache2"
-  sudo yum update -y
-  sudo yum install httpd -y
-  echo "*** Completed Installing apache2"
-  EOF
-  tags = {
-    Name = "pline_terraF6"
- }
-}
+    command = "echo ${aws_instance.ec2_terrapline.public_ip} > /root/ip_adress.txt"
+    }
+    connection {
+      type = "ssh"
+      user = "ec2-user"
+      private_key = file("/root/.ssh/id_rsa")
+      host = self.public_ip
+    }
 
+    provisioner "remote-exec" {
+      inline =[
+        "sudo yum update -y",
+        "sudo yum install mariadb-server -y",
+        "sudo systemctl start mariadb",
+        " sudo systemctl enable mariadb",
+    ]
+    }
 
-output "public_ip" {
-  value = aws_instance.ec2_terrapline.public_ip
-}
+    provisioner "file" {
+      source = "test.pline"
+      destination = "/tmp/test.pline"
+    }
+
+      vpc_security_group_ids = [aws_security_group.monSGPline.id]
+      user_data = <<-EOF
+      #!/bin/bash
+      echo "*** Installing apache2"
+      sudo yum update -y
+      sudo yum install httpd -y
+      echo "*** Completed Installing apache2"
+      EOF
+      tags = {
+        Name = "pline_terraF7"
+     }
+    }
+
+    terraform {
+    backend "s3" {
+        bucket = "my-bucket-pline"
+        key = "states/terraform.state"
+        region = "us-east-2"
+    }
+    }
+    output "public_ip" {
+      value = aws_instance.ec2_terrapline.public_ip
+    }
